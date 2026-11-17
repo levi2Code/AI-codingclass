@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101018">
+  <meta name="description" content="A silly, two-player mobile Pong game. Drag both paddles and let the bonks begin!">
+  <title>Bonk! — Pocket Pong</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f8f6ff;
+      --muted: #a6a2b8;
+      --pink: #ff5ca8;
+      --blue: #61e8ff;
+      --lime: #d8ff62;
+      --panel: #191824;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100svh;
+      background: radial-gradient(ellipse at 50% 0%, #272039 0%, #101018 58%);
+      color: var(--ink);
+      font-family: ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    .app {
+      width: min(100%, 560px);
+      display: grid;
+      gap: 14px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--pink), #9c69ff);
+      font-size: 24px;
+      box-shadow: 0 6px 24px #ff5ca83b;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(23px, 6vw, 32px);
+      line-height: 1;
+      letter-spacing: -1.5px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    button {
+      font: inherit;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .icon-button {
+      min-width: 44px;
+      height: 44px;
+      border: 1px solid #ffffff1a;
+      border-radius: 14px;
+      background: #ffffff0b;
+      font-size: 19px;
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      text-align: center;
+      background: #ffffff08;
+      border: 1px solid #ffffff12;
+      border-radius: 18px;
+      padding: 10px 16px;
+    }
+
+    .player-name {
+      text-transform: uppercase;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.6px;
+      color: var(--muted);
+    }
+
+    .score {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pink { color: var(--pink); text-shadow: 0 0 20px #ff5ca84d; }
+    .blue { color: var(--blue); text-shadow: 0 0 20px #61e8ff4d; }
+
+    .vs {
+      font-size: 11px;
+      font-weight: 900;
+      color: #777386;
+      padding: 0 20px;
+    }
+
+    .board-wrap {
+      position: relative;
+      border: 1px solid #ffffff20;
+      border-radius: 24px;
+      padding: 8px;
+      background: linear-gradient(145deg, #ffffff12, #ffffff04);
+      box-shadow: 0 20px 70px #0007;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(62svh, 560px);
+      min-height: 310px;
+      border-radius: 17px;
+      background: #11111a;
+      touch-action: none;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 8px;
+      display: grid;
+      place-items: center;
+      border-radius: 17px;
+      background: #11111ad9;
+      text-align: center;
+      padding: 22px;
+    }
+
+    .overlay[hidden] { display: none; }
+
+    .overlay-card {
+      max-width: 280px;
+    }
+
+    .overlay-emoji {
+      font-size: 48px;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 0 16px #ff5ca84d);
+    }
+
+    .overlay h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: -1px;
+    }
+
+    .overlay p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .primary {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 24px;
+      color: #17131e;
+      font-weight: 900;
+      background: linear-gradient(100deg, var(--lime), #a6ffb5);
+      box-shadow: 0 5px 22px #d8ff6230;
+    }
+
+    .hint {
+      display: flex;
+      justify-content: center;
+      text-align: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .hint b:first-child { color: var(--pink); }
+    .hint b:last-child { color: var(--blue); }
+
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #777386;
+    }
+
+    @media (max-height: 700px) {
+      body { padding: 10px; }
+      .app { gap: 9px; }
+      canvas { height: min(57svh, 440px); min-height: 260px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">🏓</div>
+        <div>
+          <h1>Bonk!</h1>
+          <div class="subtitle">pocket-sized pong, maximum nonsense</div>
+        </div>
+      </div>
+      <button class="icon-button" id="soundButton" aria-label="Turn sound off" title="Sound on">🔊</button>
+    </header>
+
+    <section class="scoreboard" aria-label="Score">
+      <div>
+        <div class="player-name pink">Left · beans</div>
+        <div class="score pink" id="leftScore">0</div>
+      </div>
+      <div class="vs">FIRST TO 7</div>
+      <div>
+        <div class="player-name blue">Right · noodles</div>
+        <div class="score blue" id="rightScore">0</div>
+      </div>
+    </section>
+
+    <div class="board-wrap">
+      <canvas id="game" aria-label="Pong game. Drag the paddle on your side of the screen."></canvas>
+      <div class="overlay" id="overlay">
+        <div class="overlay-card">
+          <div class="overlay-emoji" id="overlayEmoji">🫘</div>
+          <h2 id="overlayTitle">Ready to bonk?</h2>
+          <p id="overlayText">Two players, one tiny ball. Drag your paddle on your side and defend your dignity.</p>
+          <button class="primary" id="startButton">LET'S BONK!</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint">
+      <span>👈 Drag <b>BEANS</b></span>
+      <span>·</span>
+      <span>Drag <b>NOODLES</b> 👉</span>
+    </div>
+
+    <div class="footer">Miss the ball? It will absolutely tell you about it.</div>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.querySelector('#game');
+      const ctx = canvas.getContext('2d');
+      const overlay = document.querySelector('#overlay');
+      const startButton = document.querySelector('#startButton');
+      const soundButton = document.querySelector('#soundButton');
+      const leftScoreEl = document.querySelector('#leftScore');
+      const rightScoreEl = document.querySelector('#rightScore');
+      const titleEl = document.querySelector('#overlayTitle');
+      const textEl = document.querySelector('#overlayText');
+      const emojiEl = document.querySelector('#overlayEmoji');
+
+      const WIN_SCORE = 7;
+      const game = {
+        w: 0,
+        h: 0,
+        running: false,
+        sound: true,
+        left: 0,
+        right: 0,
+        last: 0,
+        raf: 0,
+        audio: null
+      };
+
+      const paddles = {
+        left: { y: 0, target: 0, color: '#ff5ca8' },
+        right: { y: 0, target: 0, color: '#61e8ff' }
+      };
+
+      const ball = { x: 0, y: 0, vx: 0, vy: 0, r: 7 };
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const paddleHeight = () => Math.max(70, game.h * 0.19);
+      const paddleWidth = () => Math.max(9, game.w * 0.025);
+      const leftX = () => Math.max(20, game.w * 0.055);
+      const rightX = () => game.w - leftX() - paddleWidth();
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        game.w = rect.width;
+        game.h = rect.height;
+
+        paddles.left.y = paddles.left.target = clamp(
+          paddles.left.y || game.h / 2,
+          paddleHeight() / 2,
+          game.h - paddleHeight() / 2
+        );
+        paddles.right.y = paddles.right.target = clamp(
+          paddles.right.y || game.h / 2,
+          paddleHeight() / 2,
+          game.h - paddleHeight() / 2
+        );
+
+        if (!game.running) {
+          ball.x = game.w / 2;
+          ball.y = game.h / 2;
+          draw();
+        }
+      }
+
+      function draw() {
+        const { w, h } = game;
+        if (!w || !h) return;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#11111a';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.setLineDash([6, 10]);
+        ctx.strokeStyle = '#ffffff20';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(w / 2, 12);
+        ctx.lineTo(w / 2, h - 12);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        for (let i = 0; i < 8; i++) {
+          const x = ((i * 73 + 21) % Math.max(w, 1));
+          const y = ((i * 97 + 37) % Math.max(h, 1));
+          ctx.fillStyle = '#ffffff24';
+          ctx.beginPath();
+          ctx.arc(x, y, 1.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        for (const [side, p] of Object.entries(paddles)) {
+          const x = side === 'left' ? leftX() : rightX();
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 15;
+          ctx.fillStyle = p.color;
+          roundRect(ctx, x, p.y - paddleHeight() / 2, paddleWidth(), paddleHeight(), 7);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.shadowColor = '#d8ff62';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#eaff9b';
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.roundRect(x, y, w, h, r);
+      }
+
+      function playSound(kind) {
+        if (!game.sound) return;
+
+        try {
+          const Audio = window.AudioContext || window.webkitAudioContext;
+          if (!Audio) return;
+
+          if (!game.audio) game.audio = new Audio();
+
+          if (game.audio.state === 'suspended') game.audio.resume();
+
+          const a = game.audio;
+          const now = a.currentTime;
+          const osc = a.createOscillator();
+          const gain = a.createGain();
+
+          osc.connect(gain);
+          gain.connect(a.destination);
+
+          if (kind === 'paddle') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(190 + Math.random() * 180, now);
+            osc.frequency.exponentialRampToValueAtTime(75, now + 0.12);
+            gain.gain.setValueAtTime(0.13, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.16);
+          } else if (kind === 'wall') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(180, now + 0.07);
+            gain.gain.setValueAtTime(0.07, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            osc.start(now);
+            osc.stop(now + 0.09);
+          } else {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(240, now);
+            osc.frequency.exponentialRampToValueAtTime(55, now + 0.45);
+            gain.gain.setValueAtTime(0.16, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+            osc.start(now);
+            osc.stop(now + 0.5);
+          }
+        } catch (_) {
+          // Sound is a bonus; the bonk must go on.
+        }
+      }
+
+      function serve(direction) {
+        ball.x = game.w / 2;
+        ball.y = game.h / 2;
+        const speed = Math.max(230, game.w * 0.72);
+        ball.vx = speed * direction;
+        ball.vy = (Math.random() - 0.5) * speed * 0.8;
+      }
+
+      function begin() {
+        if (game.left >= WIN_SCORE || game.right >= WIN_SCORE) {
+          game.left = 0;
+          game.right = 0;
+          leftScoreEl.textContent = '0';
+          rightScoreEl.textContent = '0';
+        }
+
+        overlay.hidden = true;
+        game.running = true;
+        game.last = performance.now();
+        serve(Math.random() < 0.5 ? -1 : 1);
+
+        cancelAnimationFrame(game.raf);
+        game.raf = requestAnimationFrame(loop);
+      }
+
+      function finish(winner) {
+        game.running = false;
+        cancelAnimationFrame(game.raf);
+        playSound('miss');
+
+        const won = winner === 'left' ? 'BEANS' : 'NOODLES';
+        titleEl.textContent = `${won} win!`;
+        textEl.textContent =
+          winner === 'left'
+            ? 'Noodles got noodled. The beans have achieved maximum bean.'
+            : 'Beans got baked. Noodles reign supreme (for now).';
+
+        emojiEl.textContent = winner === 'left' ? '🫘' : '🍜';
+        startButton.textContent = 'REMATCH!';
+        overlay.hidden = false;
+      }
+
+      function score(side) {
+        playSound('miss');
+
+        if (side === 'left') {
+          game.right++;
+          rightScoreEl.textContent = game.right;
+        } else {
+          game.left++;
+          leftScoreEl.textContent = game.left;
+        }
+
+        if (game.left >= WIN_SCORE || game.right >= WIN_SCORE) {
+          finish(game.left >= WIN_SCORE ? 'left' : 'right');
+          return;
+        }
+
+        ball.x = game.w / 2;
+        ball.y = game.h / 2;
+        ball.vx = 0;
+        ball.vy = 0;
+
+        game.running = false;
+        titleEl.textContent = side === 'left' ? 'BEANS GOT BONKED' : 'NOODLES GOT BONKED';
+        textEl.textContent =
+          side === 'left'
+            ? 'That ball just filed a noise complaint. Get ready for another one.'
+            : 'A tragic noodle-related incident. Get it back!';
+
+        emojiEl.textContent = side === 'left' ? '🫠' : '🍝';
+        startButton.textContent = 'SERVE IT!';
+        overlay.hidden = false;
+      }
+
+      function loop(now) {
+        if (!game.running) return;
+
+        const dt = Math.min((now - game.last) / 1000, 0.03);
+        game.last = now;
+
+        for (const p of Object.values(paddles)) {
+          p.y += (p.target - p.y) * Math.min(1, dt * 18);
+        }
+
+        ball.x += ball.vx * dt;
+        ball.y += ball.vy * dt;
+
+        if (ball.y - ball.r < 0 || ball.y + ball.r > game.h) {
+          ball.vy *= -1;
+          ball.y = clamp(ball.y, ball.r, game.h - ball.r);
+          playSound('wall');
+        }
+
+        const ph = paddleHeight();
+        const pw = paddleWidth();
+
+        if (
+          ball.vx < 0 &&
+          ball.x - ball.r <= leftX() + pw &&
+          ball.x > leftX() &&
+          Math.abs(ball.y - paddles.left.y) < ph / 2 + ball.r
+        ) {
+          ball.x = leftX() + pw + ball.r;
+          ball.vx = Math.abs(ball.vx) * 1.045;
+          ball.vy += (ball.y - paddles.left.y) * 3.2;
+          playSound('paddle');
+        }
+
+        if (
+          ball.vx > 0 &&
+          ball.x + ball.r >= rightX() &&
+          ball.x < rightX() + pw &&
+          Math.abs(ball.y - paddles.right.y) < ph / 2 + ball.r
+        ) {
+          ball.x = rightX() - ball.r;
+          ball.vx = -Math.abs(ball.vx) * 1.045;
+          ball.vy += (ball.y - paddles.right.y) * 3.2;
+          playSound('paddle');
+        }
+
+        if (ball.x < -12) {
+          score('left');
+          if (!game.running) return;
+        }
+
+        if (ball.x > game.w + 12) {
+          score('right');
+          if (!game.running) return;
+        }
+
+        draw();
+        game.raf = requestAnimationFrame(loop);
+      }
+
+      const activePointers = new Map();
+
+      canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        canvas.setPointerCapture(e.pointerId);
+
+        const rect = canvas.getBoundingClientRect();
+        const side = e.clientX < rect.left + rect.width / 2 ? 'left' : 'right';
+        activePointers.set(e.pointerId, side);
+        movePointer(e, side);
+      });
+
+      function movePointer(e, side) {
+        const rect = canvas.getBoundingClientRect();
+        paddles[side].target = clamp(
+          e.clientY - rect.top,
+          paddleHeight() / 2,
+          game.h - paddleHeight() / 2
+        );
+      }
+
+      canvas.addEventListener('pointermove', (e) => {
+        const side = activePointers.get(e.pointerId);
+        if (side) movePointer(e, side);
+      });
+
+      function release(e) {
+        activePointers.delete(e.pointerId);
+      }
+
+      canvas.addEventListener('pointerup', release);
+      canvas.addEventListener('pointercancel', release);
+
+      startButton.addEventListener('click', begin);
+
+      soundButton.addEventListener('click', () => {
+        game.sound = !game.sound;
+        soundButton.textContent = game.sound ? '🔊' : '🔇';
+        soundButton.title = game.sound ? 'Sound on' : 'Sound off';
+        soundButton.setAttribute('aria-label', game.sound ? 'Turn sound off' : 'Turn sound on');
+
+        if (game.sound) playSound('paddle');
+      });
+
+      new ResizeObserver(resize).observe(canvas);
+      resize();
+    })();
+  </script>
+</body>
+</html>
